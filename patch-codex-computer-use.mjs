@@ -319,7 +319,19 @@ async function patchComputerUseSettings(root, summary) {
         "settings fallback",
         changes,
       );
-      if (changes.includes("settings fallback") && !text.includes("codexComputerUseSettingsFallback")) {
+      text = replaceOnce(
+        text,
+        new RegExp(
+          String.raw`\b(${idPattern()})=(${idPattern()})\((${idPattern()}\.availablePlugins),(${idPattern()}),(${idPattern()})\),`,
+        ),
+        "$1=$2($3,$4,$5)??codexComputerUseSettingsFallback(),",
+        "settings plugin lookup fallback",
+        changes,
+      );
+      if (
+        changes.some((change) => change === "settings fallback" || change === "settings plugin lookup fallback")
+        && !text.includes("codexComputerUseSettingsFallback")
+      ) {
         text = text.replace(/export\{/, `${syntheticPluginFunction("codexComputerUseSettingsFallback")}export{`);
       }
     }
@@ -420,6 +432,16 @@ async function patchPluginSelectorFallback(root, summary) {
         ),
         (_match, fn, name, filtered, preferred, normalize, source) =>
           `${syntheticPluginFunction("codexComputerUseSelectorFallback")}function ${fn}(e,${name}){let ${filtered}=e.filter(e=>e.plugin.name===${name}||e.plugin.id.split(\`@\`)[0]===${name});${name}===\`computer-use\`&&${filtered}.length===0&&(${filtered}=[codexComputerUseSelectorFallback(),...${filtered}]);let ${preferred}=${normalize}(${source}());return`,
+        "selector fallback",
+        changes,
+      );
+      text = replaceOnce(
+        text,
+        new RegExp(
+          String.raw`function\s+(${idPattern()})\(e,(${idPattern()}),(${idPattern()})\)\{let\s+(${idPattern()})=e\.filter\(e=>e\.plugin\.name===\2\|\|e\.plugin\.id\.split\(` + "`@`" + String.raw`\)\[0\]===\2\),(${idPattern()})=(${idPattern()})\((${idPattern()})\(\)\);return`,
+        ),
+        (_match, fn, name, preferencePath, filtered, preferred, normalize, source) =>
+          `${syntheticPluginFunction("codexComputerUseSelectorFallback")}function ${fn}(e,${name},${preferencePath}){let ${filtered}=e.filter(e=>e.plugin.name===${name}||e.plugin.id.split(\`@\`)[0]===${name});${name}===\`computer-use\`&&${filtered}.length===0&&(${filtered}=[codexComputerUseSelectorFallback(),...${filtered}]);let ${preferred}=${normalize}(${source}());return`,
         "selector fallback",
         changes,
       );

@@ -2,6 +2,8 @@
 
 Reusable patcher for packaged `Codex.app` builds. It forces the Computer Use plugin to stay visible in plugin UI and settings, tolerates stale tool-call events, renders Computer Use calls through the generic MCP row to avoid the chat error screen, keeps the bundled marketplace entry present, installs the native Computer Use runtime into `~/.codex`, updates Electron ASAR integrity, and ad-hoc signs the app.
 
+Verified on Codex Desktop `26.519.22136` / `codex-cli 0.130.0`, using the current `openai/codex` `main` source (`e8378c7`) for the stable `computer_use` feature key and `computer-use@openai-bundled` plugin id.
+
 Ad-hoc signing removes the official OpenAI signature. Browser/IAB native pipes may reject the patched app because it no longer has the official TeamIdentifier. To keep Browser/IAB working, patch a copy and keep `/Applications/Codex.app` untouched:
 
 ```sh
