@@ -5,14 +5,17 @@ import { join, resolve, relative, dirname } from "node:path";
 import { homedir, tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 
-const FALLBACK_PLUGIN = `{
+function fallbackPluginLiteral() {
+  const marketplacePath = join(codexHomePath(), ".tmp", "bundled-marketplaces", "openai-bundled");
+  const pluginPath = join(marketplacePath, "plugins", "computer-use");
+  return `{
 composerIconPath:null,
 description:"Control Mac apps from Codex",
 displayName:"Computer Use",
 logoPath:null,
 marketplaceDisplayName:null,
 marketplaceName:"openai-bundled",
-marketplacePath:null,
+marketplacePath:${JSON.stringify(marketplacePath)},
 remoteMarketplaceName:"openai-bundled",
 plugin:{
 authPolicy:"ON_INSTALL",
@@ -25,11 +28,14 @@ category:"Productivity",
 defaultPrompt:["Build & run my open Xcode project and test it for bugs","Play a game in Chess.app"],
 developerName:"OpenAI",
 displayName:"Computer Use",
+longDescription:"Mac Computer Use lets Codex use any app on your computer, including your web browsers and files you allow it to access.",
 shortDescription:"Control Mac apps from Codex"
 },
-name:"computer-use"
+name:"computer-use",
+source:{type:"local",path:${JSON.stringify(pluginPath)}}
 }
 }`.replace(/\n/g, "");
+}
 
 const usage = `Usage:
   ./patch-codex-computer-use.mjs /path/to/Codex.app
@@ -106,7 +112,7 @@ function replaceOnce(text, matcher, replacement, label, changes) {
 }
 
 function syntheticPluginFunction(name) {
-  return `function ${name}(){return ${FALLBACK_PLUGIN}}`;
+  return `function ${name}(){return ${fallbackPluginLiteral()}}`;
 }
 
 function idPattern() {
@@ -590,21 +596,11 @@ async function ensureRuntimeBundledMarketplace(appPath, summary) {
 
   const codexHome = process.env.CODEX_HOME?.trim() || join(homedir(), ".codex");
   const runtimeRoot = join(codexHome, ".tmp", "bundled-marketplaces", "openai-bundled");
-  await mkdir(join(runtimeRoot, ".agents", "plugins"), { recursive: true });
-  await mkdir(join(runtimeRoot, "plugins"), { recursive: true });
-
+  await rm(runtimeRoot, { recursive: true, force: true });
+  await mkdir(dirname(runtimeRoot), { recursive: true });
+  await cp(sourceRoot, runtimeRoot, { force: true, recursive: true, verbatimSymlinks: true });
+  summary.changed.push("runtime bundled marketplace: openai-bundled marketplace");
   const runtimeMarketplace = join(runtimeRoot, ".agents", "plugins", "marketplace.json");
-  if (!existsSync(runtimeMarketplace)) {
-    await cp(join(sourceRoot, ".agents", "plugins", "marketplace.json"), runtimeMarketplace);
-    summary.changed.push("runtime bundled marketplace: marketplace.json");
-  }
-
-  await cp(sourcePlugin, join(runtimeRoot, "plugins", "computer-use"), {
-    force: true,
-    recursive: true,
-    verbatimSymlinks: true,
-  });
-  summary.changed.push("runtime bundled marketplace: computer-use plugin");
   await ensureMarketplaceEntry(runtimeMarketplace, summary, "runtime bundled marketplace");
 }
 
